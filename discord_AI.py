@@ -134,11 +134,20 @@ async def tts(text):
 async def stop(ctx):
     ctx.guild.voice_client.stop()
 
+async def get_username(user_id):
+    return await client.fetch_user(user_id)
+
 #In a seperate async thread, recieves messages from STT
 async def whisper_message(queue):
  while True:
     response = await queue.get()
-    answer = await llm(response)
+
+    user_id = response["user"]
+    message = response["result"]
+            
+    username = await get_username(user_id)  
+
+    answer = await llm(f"{username}: {message}")
     await play_audio(answer)
 
 loop.create_task(whisper_message(queue))

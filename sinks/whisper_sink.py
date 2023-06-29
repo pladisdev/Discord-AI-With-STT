@@ -59,9 +59,9 @@ class WhisperSink(Sink):
                 current_time = time.time()
                 #If the user stops saying anything new or has been speaking too long. 
                 if len(self.result) > 2 and (current_time - self.last_word > self.word_timeout or current_time - self.last_phrase > self.phrase_timeout):
-                    self.last_sample = bytes()
+                    self.last_sample = bytes()                  
+                    self.queue.put_nowait({"user" : self.current_user, "result" : self.result})
                     self.current_user = None
-                    self.queue.put_nowait(self.result)
                     self.result = ""
                     self.last_phrase = current_time
 
