@@ -13,7 +13,7 @@ import speech_recognition as sr #TODO Replace with something simpler
 
 #Outside of class so it doesn't load everytime the bot joins a discord call
 #Models are: "base.en" "small.en" "medium.en" "large-v2"
-audio_model = WhisperModel("large-v2", device="cuda", compute_type="int8_float16")
+audio_model = WhisperModel("medium.en", device="cuda", compute_type="int8_float16")
 
 class WhisperSink(Sink):
     def __init__(self, queue, *, filters=None, data_length=50000, word_timeout=2, phrase_timeout=20):
@@ -46,8 +46,8 @@ class WhisperSink(Sink):
         self.result = ""
 
         self.transcribe_queue = Queue()
-        self.phrase_end = threading.Thread(target=self.transcribe, args=())
-        self.phrase_end.start()
+        self.trascribe_thread = threading.Thread(target=self.transcribe, args=())
+        self.trascribe_thread.start()
 
     def transcribe(self):
 
