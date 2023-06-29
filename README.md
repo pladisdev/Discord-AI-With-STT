@@ -4,7 +4,7 @@
 ### Features
 - Send messages with @ or reply to the bot and get a message back from an LLM (LLM is implemented yourself).
 - Use commands to instruct the bot in different ways, with user-specific access
-- Have the bot join a VC call, and listen with TTS, send the message to an LLM, and reply with TTS (TTS is implemented yourself)
+- Have the bot join a VC call, and listen with STT (and know the name of the user talking), send the message to an LLM, and reply with TTS (TTS is implemented yourself)
 
 ## Instructions
 ### For STT
