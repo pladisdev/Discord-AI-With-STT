@@ -4,13 +4,14 @@ from queue import Queue
 from tempfile import NamedTemporaryFile
 import io
 import time
+import wave
 
 #3rd party libraries
 from discord.sinks.core import Filters, Sink, default_filters
 import torch #Had issues where removing torch causes whisper to throw an error
 from faster_whisper import WhisperModel #TODO Perhaps have option for default whisper
 import speech_recognition as sr #TODO Replace with something simpler
-import wave
+
 
 #Outside of class so it doesn't load everytime the bot joins a discord call
 #Models are: "base.en" "small.en" "medium.en" "large-v2"
@@ -62,6 +63,8 @@ class WhisperSink(Sink):
 
     #Get SST from whisper and store result into speaker
     def transcribe(self, speaker):
+
+        
         #TODO Figure out the best way to save the audio fast and remove any noise
         audio_data = sr.AudioData(speaker.data, self.vc.decoder.SAMPLING_RATE, self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)
         wav_data = io.BytesIO(audio_data.get_wav_data())
@@ -85,7 +88,7 @@ class WhisperSink(Sink):
         #Checks if user is saying something new
         if speaker.phrase != result:
             speaker.phrase = result
-            speaker.last_word = time.time() #current_time is too delayed
+            speaker.last_word = time.time()
     
     def insert_voice(self):
 
