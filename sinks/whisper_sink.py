@@ -54,11 +54,11 @@ class WhisperSink(Sink):
 
         self.temp_file = NamedTemporaryFile().name
 
+        self.speakers = []
+
         self.voice_queue = Queue()
         self.voice_thread = threading.Thread(target=self.insert_voice, args=())
-        self.voice_thread.start()
-
-        self.speakers = []
+        self.voice_thread.start()   
 
     #Get SST from whisper and store result into speaker
     def transcribe(self, speaker):
