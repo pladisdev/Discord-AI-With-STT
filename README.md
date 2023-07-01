@@ -10,8 +10,8 @@
 ## Instructions
 ### Libraries
 - Seems like you need python >= 3.8. try removing the version requirements in the pip install for older python versions.
-- You'll need to install torch for your PC. I tested with cuda 11.8. https://pytorch.org/get-started/locally/
-- pip install -r requirements.txt for the libraries.
+- You'll need to install torch for your PC. I tested with cuda 11.8. ```https://pytorch.org/get-started/locally/```
+- ```pip install -r requirements.txt``` for the required libraries after installing torch.
   
 ### For STT
 - Run the script.
