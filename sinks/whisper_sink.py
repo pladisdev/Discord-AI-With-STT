@@ -106,6 +106,7 @@ class WhisperSink(Sink):
 
             if not self.voice_queue.empty():
                 
+                #Emtpy queue which can contain multiple speaker's data
                 while not self.voice_queue.empty():
                     item = self.voice_queue.get()
 
@@ -120,9 +121,12 @@ class WhisperSink(Sink):
                     if not user_heard:
                         self.speakers.append(Speaker(item[0], item[1]))
 
+                #STT for each speaker currently talking on discord
                 for speaker in self.speakers:
+                    #No reason to transcribe if no new data has come from discord.
                     if speaker.new_data:
                         self.transcribe(speaker)
+                        speaker.new_data = False
   
             #Loops with no wait time is bad
             time.sleep(.05)
