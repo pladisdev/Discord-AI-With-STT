@@ -10,6 +10,7 @@ from discord.sinks.core import Filters, Sink, default_filters
 import torch #Had issues where removing torch causes whisper to throw an error
 from faster_whisper import WhisperModel #TODO Perhaps have option for default whisper
 import speech_recognition as sr #TODO Replace with something simpler
+import wave
 
 #Outside of class so it doesn't load everytime the bot joins a discord call
 #Models are: "base.en" "small.en" "medium.en" "large-v2"
@@ -61,11 +62,21 @@ class WhisperSink(Sink):
 
     #Get SST from whisper and store result into speaker
     def transcribe(self, speaker):
+        #TODO Figure out the best way to save the audio fast and remove any noise
         audio_data = sr.AudioData(speaker.data, self.vc.decoder.SAMPLING_RATE, self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)
         wav_data = io.BytesIO(audio_data.get_wav_data())
 
-        with open(self.temp_file, 'w+b') as f:
-            f.write(wav_data.read())
+        with open(self.temp_file, 'wb') as file:
+            wave_writer = wave.open(file, 'wb')
+            wave_writer.setnchannels(self.vc.decoder.CHANNELS)  # Mono audio
+            wave_writer.setsampwidth(self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)  # 2 bytes per sample
+            wave_writer.setframerate(self.vc.decoder.SAMPLING_RATE)  # Sample rate (e.g., 44100 Hz)
+
+            # Set the WAV data
+            wave_writer.writeframes(wav_data.getvalue())
+
+            # Close the WAV writer
+            wave_writer.close()
 
         #The whisper model
         segments, info = audio_model.transcribe(self.temp_file, beam_size=5)
@@ -88,7 +99,7 @@ class WhisperSink(Sink):
             
             for speaker in self.speakers:
                 #If the user stops saying anything new or has been speaking too long. 
-                if current_time - speaker.last_word > self.word_timeout or current_time - speaker.last_word > self.phrase_timeout:
+                if current_time - speaker.last_word > self.word_timeout or current_time - speaker.last_phrase > self.phrase_timeout:
                     #Don't send anything if the phtase is too small
                     if len(speaker.phrase) > self.minimum_length:
                         self.queue.put_nowait({"user" : speaker.user, "result" : speaker.phrase})
@@ -115,7 +126,7 @@ class WhisperSink(Sink):
                         self.transcribe(speaker)
   
             #Loops with no wait time is bad
-            time.sleep(.01)
+            time.sleep(.05)
 
     #Gets audio data from discord for each user talking
     @Filters.container
