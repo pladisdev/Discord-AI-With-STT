@@ -7,7 +7,7 @@ from discord import FFmpegOpusAudio
 #from sinks.stream_sink import StreamSink #Outputs audio to desired output audio device (tested on windows)
 from sinks.whisper_sink import WhisperSink #User whisper to transcribe audio and outputs to TTS
 
-TOKEN = "MTA4OTIzMTI3MTk2NTc2NTc2Mw.GbCA9T.yENb2LZ38tiGb-0izOrKt6NPrHU-nDW_iof0IQ"
+TOKEN = "insert your discord bot token here"
 
 #can be a list, both being empty means anyone can command the bot
 COMMAND_ROLES = ["insert your roles to command bot here",]
