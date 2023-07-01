@@ -68,14 +68,10 @@ class WhisperSink(Sink):
 
         with open(self.temp_file, 'wb') as file:
             wave_writer = wave.open(file, 'wb')
-            wave_writer.setnchannels(self.vc.decoder.CHANNELS)  # Mono audio
-            wave_writer.setsampwidth(self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)  # 2 bytes per sample
-            wave_writer.setframerate(self.vc.decoder.SAMPLING_RATE)  # Sample rate (e.g., 44100 Hz)
-
-            # Set the WAV data
+            wave_writer.setnchannels(self.vc.decoder.CHANNELS)
+            wave_writer.setsampwidth(self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)
+            wave_writer.setframerate(self.vc.decoder.SAMPLING_RATE) 
             wave_writer.writeframes(wav_data.getvalue())
-
-            # Close the WAV writer
             wave_writer.close()
 
         #The whisper model
