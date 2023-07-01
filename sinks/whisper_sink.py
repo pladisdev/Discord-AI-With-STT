@@ -15,8 +15,23 @@ import speech_recognition as sr #TODO Replace with something simpler
 #Models are: "base.en" "small.en" "medium.en" "large-v2"
 audio_model = WhisperModel("medium.en", device="cuda", compute_type="int8_float16")
 
+#Class for storing info for each speaker in discord
+class Speaker():
+    def __init__(self, user, data):   
+        self.user = user
+        
+        self.data = bytes()
+        self.data += data
+
+        self.last_word = time.time()
+        self.last_phrase = time.time()
+
+        self.phrase = ""
+
+        self.new_data = True
+
 class WhisperSink(Sink):
-    def __init__(self, queue, *, filters=None, data_length=50000, word_timeout=2, phrase_timeout=20):
+    def __init__(self, queue, *, filters=None, data_length=50000, word_timeout=2, phrase_timeout=20, minimum_length=2):
 
         self.queue = queue
 
@@ -32,64 +47,73 @@ class WhisperSink(Sink):
         self.word_timeout = word_timeout
         self.phrase_timeout = phrase_timeout
 
-        self.last_word = 0
-        self.last_phrase = 0
+        self.minimum_length = minimum_length
 
         self.running = True  
 
-        self.current_user = None   
-
         self.temp_file = NamedTemporaryFile().name
 
-        self.last_sample = bytes()
+        self.voice_queue = Queue()
+        self.voice_thread = threading.Thread(target=self.insert_voice, args=())
+        self.voice_thread.start()
 
-        self.result = ""
+        self.speakers = []
 
-        self.transcribe_queue = Queue()
-        self.trascribe_thread = threading.Thread(target=self.transcribe, args=())
-        self.trascribe_thread.start()
+    #Get SST from whisper and store result into speaker
+    def transcribe(self, speaker):
+        audio_data = sr.AudioData(speaker.data, self.vc.decoder.SAMPLING_RATE, self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)
+        wav_data = io.BytesIO(audio_data.get_wav_data())
 
-    def transcribe(self):
+        with open(self.temp_file, 'w+b') as f:
+            f.write(wav_data.read())
+
+        #The whisper model
+        segments, info = audio_model.transcribe(self.temp_file, beam_size=5)
+        segments = list(segments)
+
+        result = ""      
+        for segment in segments:
+            result += segment.text
+
+        #Checks if user is saying something new
+        if speaker.phrase != result:
+            speaker.phrase = result
+            speaker.last_word = time.time() #current_time is too delayed
+    
+    def insert_voice(self):
 
         while self.running:
-            if  self.current_user is None:
-                self.last_word = time.time()
-                self.last_phrase = time.time()
-            else:
-                current_time = time.time()
-                #If the user stops saying anything new or has been speaking too long. 
-                if len(self.result) > 2 and (current_time - self.last_word > self.word_timeout or current_time - self.last_phrase > self.phrase_timeout):
-                    self.last_sample = bytes()                  
-                    self.queue.put_nowait({"user" : self.current_user, "result" : self.result})
-                    self.current_user = None
-                    self.result = ""
-                    self.last_phrase = current_time
 
-                #When data from discord is available 
-                if not self.transcribe_queue.empty():
-
-                    while not self.transcribe_queue.empty():
-                        self.last_sample += self.transcribe_queue.get()
-
-                    audio_data = sr.AudioData(self.last_sample, self.vc.decoder.SAMPLING_RATE, self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)
-                    wav_data = io.BytesIO(audio_data.get_wav_data())
-
-                    with open(self.temp_file, 'w+b') as f:
-                        f.write(wav_data.read())
-
-                    #The whisper model
-                    segments, info = audio_model.transcribe(self.temp_file, beam_size=5)
-                    segments = list(segments)
-
-                    result = ""      
-                    for segment in segments:
-                        result += segment.text
-
-                    #Checks if user is saying something new
-                    if self.result != result:
-                        self.result = result
-                        self.last_word = time.time() #current_time is too delayed
+            current_time = time.time()
             
+            for speaker in self.speakers:
+                #If the user stops saying anything new or has been speaking too long. 
+                if current_time - speaker.last_word > self.word_timeout or current_time - speaker.last_word > self.phrase_timeout:
+                    #Don't send anything if the phtase is too small
+                    if len(speaker.phrase) > self.minimum_length:
+                        self.queue.put_nowait({"user" : speaker.user, "result" : speaker.phrase})
+                    self.speakers.remove(speaker)
+
+            if not self.voice_queue.empty():
+                
+                while not self.voice_queue.empty():
+                    item = self.voice_queue.get()
+
+                    user_heard = False
+                    for speaker in self.speakers:
+                        if item[0] == speaker.user:
+                            speaker.data += item[1]                          
+                            user_heard = True
+                            speaker.new_data = True
+                            break
+
+                    if not user_heard:
+                        self.speakers.append(Speaker(item[0], item[1]))
+
+                for speaker in self.speakers:
+                    if speaker.new_data:
+                        self.transcribe(speaker)
+  
             #Loops with no wait time is bad
             time.sleep(.01)
 
@@ -97,20 +121,14 @@ class WhisperSink(Sink):
     @Filters.container
     def write(self, data, user):
 
-        if self.current_user is None:
-            self.current_user = user 
+        #Discord will send empty bytes from when the user stopped talking to when the user starts to talk again. 
+        #Its only the first the first data that grows massive and its only silent audio, so its trimmed.
+        data_len = len(data)
+        if data_len > self.data_length:
+            data = data[-self.data_length:]
         
-        #The first user that starts talking is selected, other users are ignored until the first user stops speaking
-        if self.current_user == user:
-            
-            #Discord will send empty bytes from when the user stopped talking to when the user starts to talk again. 
-            #Its only the first the first data that grows massive and its only silent audio, so its trimmed.
-            data_len = len(data)
-            if data_len > self.data_length:
-                data = data[-self.data_length:]
-            
-            #Send bytes to be transcribed
-            self.transcribe_queue.put(data)
+        #Send bytes to be transcribed
+        self.voice_queue.put([user, data])
 
     #End thread
     def close(self):

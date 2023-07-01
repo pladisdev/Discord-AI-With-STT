@@ -7,10 +7,12 @@ from discord import FFmpegOpusAudio
 #from sinks.stream_sink import StreamSink #Outputs audio to desired output audio device (tested on windows)
 from sinks.whisper_sink import WhisperSink #User whisper to transcribe audio and outputs to TTS
 
-TOKEN = "Your_discord_bot_token"
+TOKEN = "MTA4OTIzMTI3MTk2NTc2NTc2Mw.GbCA9T.yENb2LZ38tiGb-0izOrKt6NPrHU-nDW_iof0IQ"
 
-#can be a list, empty means anyone can use commands on your bot
-MODS = [["your_discord_name", "your_discriminator"],]
+#can be a list, both being empty means anyone can command the bot
+COMMAND_ROLES = ["insert your roles to command bot here",]
+COMMANDS_USERS = ["insert user ID to command bot here",]
+
 OUTPUT_DEVICE = "your_audio_output_device" # for StreamSink only
 
 loop = asyncio.get_event_loop()
@@ -80,15 +82,13 @@ async def on_message(message):
 
         #! is a command message
         if message.content[0] == "!":
-            if MODS == []:
+            
+            if COMMAND_ROLES == [] and COMMANDS_USERS == []:
                 await client.process_commands(message)
-                print(message)
-            else: 
-                for mod in MODS:
-                    if message.author.name == mod[0] and message.author.discriminator == mod[1]:
-                        await client.process_commands(message)
-                        print(message)
-                        break       
+            elif message.author.id in COMMANDS_USERS:
+                await client.process_commands(message)
+            elif any(role.name in COMMAND_ROLES for role in message.author.roles):
+                await client.process_commands(message)              
             return
         
         #If user @s or replies to your bot
