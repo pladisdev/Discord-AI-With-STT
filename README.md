@@ -8,7 +8,8 @@
 - Able to understand multiple user's talking at once, and output each transcription with username
 
 ## Instructions
-### Libraries
+### Installation - Tested on Windows
+- You will need FFMPEG installed for the bot to speak in discord. ```https://ffmpeg.org/```
 - Seems like you need python >= 3.8. try removing the version requirements in the pip install for older python versions.
 - You'll need to install torch for your PC. I tested with cuda 11.8. ```https://pytorch.org/get-started/locally/```
 - ```pip install -r requirements.txt``` for the required libraries after installing torch.
