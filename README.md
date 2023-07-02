@@ -13,6 +13,7 @@
 - Seems like you need python >= 3.8. try removing the version requirements in the pip install for older python versions.
 - You'll need to install torch for your PC. I tested with cuda 11.8. ```https://pytorch.org/get-started/locally/```
 - ```pip install -r requirements.txt``` for the required libraries after installing torch.
+- Create a discord bot using the Discord Developer Portal and add the bot the server you want the bot in. Permissions (I believe are) needed are Read Messages, Speak, Connect. ```https://discord.com/developers```
 - Edit the discord_AI script with your discord bot TOKEN and edit which roles and persons you want to be able to command the bot.
   
 ### For STT
@@ -23,7 +24,9 @@
 
 ## TODO
 - Provide a dummy LLM and TTS just for demonstration purpose
+- Provide better logic to handle if user is no longer speaking, espicially in a large group.
 - A lot more
 
 ## Issues
 - Whisper will return a bunch of hallucinations that come from youtube commentary that can be filtered. For example: "THANK YOU", "Make sure to like, comment, and subcribe", "you", etc.
+- Possibility for a speaker to be cut off early when a large group is talking
