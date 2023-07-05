@@ -90,7 +90,7 @@ class WhisperSink(Sink):
         #Checks if user is saying something new
         if speaker.phrase != result:           
             #Detect if user is mid sentence and delay sending full message
-            if re.search(r"\.$", speaker.phrase) or re.search(r"[!?]$", speaker.phrase):
+            if not re.search(r"\s*\.{2,}$", speaker.phrase) and re.search(r"[!?]$", speaker.phrase):
                 speaker.word_timeout = self.end_sentence_timeout
             else:
                 speaker.word_timeout = self.mid_sentence_timeout
