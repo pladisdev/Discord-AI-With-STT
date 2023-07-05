@@ -7,20 +7,41 @@ from discord import FFmpegOpusAudio
 #from sinks.stream_sink import StreamSink #Outputs audio to desired output audio device (tested on windows)
 from sinks.whisper_sink import WhisperSink #User whisper to transcribe audio and outputs to TTS
 
+#You should replace these with your llm and tts of choice
+from modules import llm_dialo, tts_windows
+
 TOKEN = "insert your discord bot token here"
 
-#can be a list, both being empty means anyone can command the bot
-COMMAND_ROLES = ["insert your roles to command bot here",]
-COMMANDS_USERS = ["insert user ID to command bot here",]
+#can be a list, both being empty means anyone can command the bot. Roles should be lowercase, USERS requires user IDs
+COMMAND_ROLES = []
+COMMANDS_USERS = []
 
-OUTPUT_DEVICE = "your_audio_output_device" # for StreamSink only
+#OUTPUT_DEVICE = "your_audio_output_device" # for StreamSink only
 
 loop = asyncio.get_event_loop()
 intents = discord.Intents.all()
 client = commands.Bot(command_prefix="!", intents=intents, loop=loop)
+
+ai = llm_dialo.LLM()
+speech = tts_windows.TTS()
+  
 voice_channel = None
 
-queue = asyncio.Queue()
+#In a seperate async thread, recieves messages from STT
+async def whisper_message(queue):
+ while True:
+    response = await queue.get()
+
+    if response is None:
+        break
+    else:
+        user_id = response["user"]
+        message = response["result"]
+                
+        username = await get_username(user_id)  
+
+        answer = await loop.run_in_executor(None, ai.chat, username, message)
+        await play_audio(answer)
 
 @client.command()
 async def quit(ctx):
@@ -38,6 +59,8 @@ async def join(ctx):
             print(e)
         voice_channel = ctx.guild.voice_client
         #Replace Sink for either StreamSink or WhisperSink
+        queue = asyncio.Queue()
+        loop.create_task(whisper_message(queue))
         ctx.voice_client.start_recording(WhisperSink(queue), callback, ctx)
         await ctx.send("Joining.")
     else:
@@ -103,31 +126,19 @@ async def on_message(message):
             else:
                 user = message.author.name.replace(".", " ")
 
-            response = await llm(f"{user}: {text}")
+            response = await loop.run_in_executor(None, ai.chat, user, text)
 
             await message.reply(response, mention_author=False)
-
-#Put your LLM here, needs to be async. You recieve a discord message or STT message and return your LLM response.
-async def llm(text):
-    print(text)
-    await asyncio.sleep(2)
-    return "test"
 
 #Plays an audio file through discord. So far only audio files work, not streaming.
 #TODO make voice_channel.play async. Probably need to use the callback feature.
 async def play_audio(text):
     global voice_channel   
     if voice_channel is not None:      
-        audio_file = await tts(text)
+        audio_file = await loop.run_in_executor(None, speech.tts_wav, text)
         if audio_file is not None:
             prepared_audio = FFmpegOpusAudio(audio_file, executable="ffmpeg")
             voice_channel.play(prepared_audio)
-
-#Put your TTS here, should be async. Recieves text and returns an audio file path
-async def tts(text):
-    await asyncio.sleep(2)
-    audio_file = None
-    return audio_file
 
 #Stops the bot if they are speaking
 @client.command()
@@ -136,20 +147,5 @@ async def stop(ctx):
 
 async def get_username(user_id):
     return await client.fetch_user(user_id)
-
-#In a seperate async thread, recieves messages from STT
-async def whisper_message(queue):
- while True:
-    response = await queue.get()
-
-    user_id = response["user"]
-    message = response["result"]
-            
-    username = await get_username(user_id)  
-
-    answer = await llm(f"{username}: {message}")
-    await play_audio(answer)
-
-loop.create_task(whisper_message(queue))
 
 client.run(TOKEN)

@@ -1,3 +1,7 @@
 faster-whisper == 0.6.0
 SpeechRecognition == 3.10.0
 discord.py[voice] == 2.2.2
+numpy == 1.23.5
+pyttsx3 == 2.9
+transformers
+

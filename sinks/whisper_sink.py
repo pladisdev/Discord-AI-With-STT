@@ -4,6 +4,7 @@ from queue import Queue
 from tempfile import NamedTemporaryFile
 import io
 import time
+import re
 import wave
 
 #3rd party libraries
@@ -11,7 +12,6 @@ from discord.sinks.core import Filters, Sink, default_filters
 import torch #Had issues where removing torch causes whisper to throw an error
 from faster_whisper import WhisperModel #TODO Perhaps have option for default whisper
 import speech_recognition as sr #TODO Replace with something simpler
-
 
 #Outside of class so it doesn't load everytime the bot joins a discord call
 #Models are: "base.en" "small.en" "medium.en" "large-v2"
@@ -27,13 +27,14 @@ class Speaker():
 
         self.last_word = time.time()
         self.last_phrase = time.time()
+        self.word_timeout = 0
 
         self.phrase = ""
 
         self.new_data = True
 
 class WhisperSink(Sink):
-    def __init__(self, queue, *, filters=None, data_length=50000, word_timeout=2, phrase_timeout=20, minimum_length=2):
+    def __init__(self, queue, *, filters=None, data_length=50000, mid_sentence_timeout=2, end_sentence_timeout=1.2, phrase_timeout=20, minimum_length=3):
 
         self.queue = queue
 
@@ -46,7 +47,9 @@ class WhisperSink(Sink):
         self.audio_data = {}
 
         self.data_length = data_length
-        self.word_timeout = word_timeout
+        self.mid_sentence_timeout = mid_sentence_timeout
+        self.end_sentence_timeout = end_sentence_timeout
+        
         self.phrase_timeout = phrase_timeout
 
         self.minimum_length = minimum_length
@@ -64,7 +67,6 @@ class WhisperSink(Sink):
     #Get SST from whisper and store result into speaker
     def transcribe(self, speaker):
 
-        
         #TODO Figure out the best way to save the audio fast and remove any noise
         audio_data = sr.AudioData(speaker.data, self.vc.decoder.SAMPLING_RATE, self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)
         wav_data = io.BytesIO(audio_data.get_wav_data())
@@ -86,7 +88,13 @@ class WhisperSink(Sink):
             result += segment.text
 
         #Checks if user is saying something new
-        if speaker.phrase != result:
+        if speaker.phrase != result:           
+            #Detect if user is mid sentence and delay sending full message
+            if re.search(r"\.$", speaker.phrase) or re.search(r"[!?]$", speaker.phrase):
+                speaker.word_timeout = self.end_sentence_timeout
+            else:
+                speaker.word_timeout = self.mid_sentence_timeout
+            
             speaker.phrase = result
             speaker.last_word = time.time()
     
@@ -96,18 +104,18 @@ class WhisperSink(Sink):
 
             current_time = time.time()
             
-            for speaker in self.speakers:
-                #If the user stops saying anything new or has been speaking too long. 
-                if current_time - speaker.last_word > self.word_timeout or current_time - speaker.last_phrase > self.phrase_timeout:
-                    #Don't send anything if the phtase is too small
-                    if len(speaker.phrase) > self.minimum_length:
+            for speaker in self.speakers:              
+                #Don't send anything if the phrase is too small
+                if len(speaker.phrase) >= self.minimum_length:
+                    #If the user stops saying anything new or has been speaking too long. 
+                    if current_time - speaker.last_word > speaker.word_timeout or current_time - speaker.last_phrase > self.phrase_timeout:                     
                         self.queue.put_nowait({"user" : speaker.user, "result" : speaker.phrase})
-                    self.speakers.remove(speaker)
+                        self.speakers.remove(speaker)
 
-            if not self.voice_queue.empty():
-                
+            if not self.voice_queue.empty():               
                 #Emtpy queue which can contain multiple speaker's data
                 while not self.voice_queue.empty():
+                    
                     item = self.voice_queue.get()
 
                     user_heard = False
@@ -134,7 +142,6 @@ class WhisperSink(Sink):
     #Gets audio data from discord for each user talking
     @Filters.container
     def write(self, data, user):
-
         #Discord will send empty bytes from when the user stopped talking to when the user starts to talk again. 
         #Its only the first the first data that grows massive and its only silent audio, so its trimmed.
         data_len = len(data)
@@ -147,3 +154,4 @@ class WhisperSink(Sink):
     #End thread
     def close(self):
         self.running = False
+        self.queue.put_nowait(None)
