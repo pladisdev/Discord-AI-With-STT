@@ -24,7 +24,7 @@
 - Enter a discord voice channel within a guild the bot has access to.
 - type !join in a guild text channel.
 - The bot will join and listen to what you say!
-- The bot will take a few seconds to process what you said after you stop talking
+- The bot will respond after taking a few seconds to process what you said when you stop talking
 
 ## TODO
 - Provide better logic to handle if user is no longer speaking, espicially in a large group.
