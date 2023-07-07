@@ -17,13 +17,33 @@ import speech_recognition as sr #TODO Replace with something simpler
 #Models are: "base.en" "small.en" "medium.en" "large-v2"
 audio_model = WhisperModel("medium.en", device="cuda", compute_type="int8_float16")
 
+excluded_phrases = [
+    "",
+    "thanks",
+    "thank you so much thank you",
+    "thank you very much",
+    "thank you bye",
+    "thank you",
+    "all right",
+    "thank you thank you",
+    "thank you for watching",
+    "thanks for watching",
+    "i'll see you next time",
+    "got to cancel",
+    "hello",
+    "you",
+    "the",
+    "yeah",
+    "but",
+    "heh heh"
+    ] 
+
 #Class for storing info for each speaker in discord
 class Speaker():
     def __init__(self, user, data):   
         self.user = user
         
-        self.data = bytes()
-        self.data += data
+        self.data = [data]
 
         self.last_word = time.time()
         self.last_phrase = time.time()
@@ -31,7 +51,8 @@ class Speaker():
 
         self.phrase = ""
 
-        self.new_data = True
+        self.empty_bytes_counter = 0
+        self.new_bytes = 1
 
 class WhisperSink(Sink):
     def __init__(self, queue, *, filters=None, data_length=50000, mid_sentence_timeout=2, end_sentence_timeout=1.2, phrase_timeout=20, minimum_length=3):
@@ -64,11 +85,16 @@ class WhisperSink(Sink):
         self.voice_thread = threading.Thread(target=self.insert_voice, args=())
         self.voice_thread.start()   
 
+    def is_valid_phrase(self, speaker_phrase, result):
+        cleaned_result = re.sub(r'[.!?,]', '', result).lower().strip()
+        print(f"{result} : {cleaned_result}")
+        return speaker_phrase != result and cleaned_result not in excluded_phrases
+
     #Get SST from whisper and store result into speaker
     def transcribe(self, speaker):
 
         #TODO Figure out the best way to save the audio fast and remove any noise
-        audio_data = sr.AudioData(speaker.data, self.vc.decoder.SAMPLING_RATE, self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)
+        audio_data = sr.AudioData(bytes().join(speaker.data), self.vc.decoder.SAMPLING_RATE, self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)
         wav_data = io.BytesIO(audio_data.get_wav_data())
 
         with open(self.temp_file, 'wb') as file:
@@ -87,8 +113,9 @@ class WhisperSink(Sink):
         for segment in segments:
             result += segment.text
 
-        #Checks if user is saying something new
-        if speaker.phrase != result:           
+        #Checks if user is saying a new valid phrase
+        if self.is_valid_phrase(speaker.phrase, result):           
+            speaker.empty_bytes_counter = 0
             #Detect if user is mid sentence and delay sending full message
             if not re.search(r"\s*\.{2,}$", speaker.phrase) and re.search(r"[!?]$", speaker.phrase):
                 speaker.word_timeout = self.end_sentence_timeout
@@ -97,6 +124,12 @@ class WhisperSink(Sink):
             
             speaker.phrase = result
             speaker.last_word = time.time()
+        
+        #If user's mic is on but not saying anything, remove those bytes for faster inference.
+        elif speaker.empty_bytes_counter > 5:
+            speaker.data = speaker.data[:-speaker.new_bytes]
+        else:
+            speaker.empty_bytes_counter += 1
     
     def insert_voice(self):
 
@@ -104,7 +137,7 @@ class WhisperSink(Sink):
 
             current_time = time.time()
             
-            for speaker in self.speakers:              
+            for speaker in self.speakers:
                 #Don't send anything if the phrase is too small
                 if len(speaker.phrase) >= self.minimum_length:
                     #If the user stops saying anything new or has been speaking too long. 
@@ -119,11 +152,11 @@ class WhisperSink(Sink):
                     item = self.voice_queue.get()
 
                     user_heard = False
-                    for speaker in self.speakers:
+                    for speaker in self.speakers:                    
                         if item[0] == speaker.user:
-                            speaker.data += item[1]                          
+                            speaker.data.append(item[1])                          
                             user_heard = True
-                            speaker.new_data = True
+                            speaker.new_bytes += 1
                             break
 
                     if not user_heard:
@@ -132,9 +165,9 @@ class WhisperSink(Sink):
                 #STT for each speaker currently talking on discord
                 for speaker in self.speakers:
                     #No reason to transcribe if no new data has come from discord.
-                    if speaker.new_data:
+                    if speaker.new_bytes > 0:
                         self.transcribe(speaker)
-                        speaker.new_data = False
+                        speaker.new_bytes = 0
   
             #Loops with no wait time is bad
             time.sleep(.05)

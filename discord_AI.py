@@ -40,6 +40,8 @@ async def whisper_message(queue):
                 
         username = await get_username(user_id)  
 
+        print(f"Detected Message: {message}")
+
         answer = await loop.run_in_executor(None, ai.chat, username, message)
         await play_audio(answer)
 
@@ -61,7 +63,7 @@ async def join(ctx):
         #Replace Sink for either StreamSink or WhisperSink
         queue = asyncio.Queue()
         loop.create_task(whisper_message(queue))
-        ctx.voice_client.start_recording(WhisperSink(queue), callback, ctx)
+        voice_channel.start_recording(WhisperSink(queue), callback, ctx)
         await ctx.send("Joining.")
     else:
         await ctx.send("You are not in a VC channel.")
@@ -137,6 +139,8 @@ async def play_audio(text):
     if voice_channel is not None:      
         audio_file = await loop.run_in_executor(None, speech.tts_wav, text)
         if audio_file is not None:
+            while voice_channel.is_playing():
+                await asyncio.sleep(.1)
             prepared_audio = FFmpegOpusAudio(audio_file, executable="ffmpeg")
             voice_channel.play(prepared_audio)
 
