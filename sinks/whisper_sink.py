@@ -87,7 +87,6 @@ class WhisperSink(Sink):
 
     def is_valid_phrase(self, speaker_phrase, result):
         cleaned_result = re.sub(r'[.!?,]', '', result).lower().strip()
-        print(f"{result} : {cleaned_result}")
         return speaker_phrase != result and cleaned_result not in excluded_phrases
 
     #Get SST from whisper and store result into speaker

@@ -63,7 +63,7 @@ async def join(ctx):
         #Replace Sink for either StreamSink or WhisperSink
         queue = asyncio.Queue()
         loop.create_task(whisper_message(queue))
-        voice_channel.start_recording(WhisperSink(queue), callback, ctx)
+        voice_channel.start_recording(WhisperSink(queue, data_length=50000, mid_sentence_timeout=2.2, end_sentence_timeout=1.4, phrase_timeout=20, minimum_length=3), callback, ctx)
         await ctx.send("Joining.")
     else:
         await ctx.send("You are not in a VC channel.")
