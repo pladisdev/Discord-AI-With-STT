@@ -143,6 +143,9 @@ class WhisperSink(Sink):
                     if current_time - speaker.last_word > speaker.word_timeout or current_time - speaker.last_phrase > self.phrase_timeout:                     
                         self.queue.put_nowait({"user" : speaker.user, "result" : speaker.phrase})
                         self.speakers.remove(speaker)
+                else:
+                    #Reset the phrase timer if the user hasn't spoken enough
+                    speaker.last_phrase = current_time
 
             if not self.voice_queue.empty():               
                 #Emtpy queue which can contain multiple speaker's data
