@@ -17,9 +17,9 @@
 - Edit the discord_AI script with your discord bot TOKEN and edit which roles and persons you want to be able to command the bot.
 
 ### Commands
-- !join to have the bot join a VC you are currently in
-- !leave to have the bot leave your VC
-- !quit to close the program
+- ```!join``` to have the bot join a VC you are currently in
+- ```!leave``` to have the bot leave your VC
+- ```!quit``` to close the program
 
 ### Messaging in guild
 - Just @ or reply to your bot to get a response
