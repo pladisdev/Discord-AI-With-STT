@@ -20,7 +20,6 @@
 - Just @ or reply to your bot to get a response
   
 ### For STT
-- Run the script.
 - Enter a discord voice channel within a guild the bot has access to.
 - type ```!join``` in a guild text channel.
 - The bot will join and listen to what you say!
