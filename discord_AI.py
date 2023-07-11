@@ -12,6 +12,7 @@ from modules import llm_dialo, tts_windows
 
 TOKEN = "insert your discord bot token here"
 
+#This is who you allow to use commands with the bot, either by role, user or both.
 #can be a list, both being empty means anyone can command the bot. Roles should be lowercase, USERS requires user IDs
 COMMAND_ROLES = []
 COMMANDS_USERS = []
