@@ -22,7 +22,7 @@
 ### For STT
 - Run the script.
 - Enter a discord voice channel within a guild the bot has access to.
-- type !join in a guild text channel.
+- type ```!join``` in a guild text channel.
 - The bot will join and listen to what you say!
 - The bot will respond after taking a few seconds to process what you said when you stop talking
 
