@@ -21,6 +21,8 @@
  - COMMAND_ROLES requires a lower case name of the role in your guild
  - COMMAND_USERS requires your User ID. Right click a user's name to get their ID in discord.
  - Leaving both empty allows anyone to command the bot.
+ - REPLY_CHANNELS decides which channel ID in your guild the bot can reply to user in. Keep empty to allow all channels. Right channels in your discord to get the ID.
+
 
 ### Commands
 - ```!join``` to have the bot join a VC you are currently in

@@ -90,7 +90,7 @@ class WhisperSink(Sink):
         return speaker_phrase != result and cleaned_result not in excluded_phrases
 
     #Get SST from whisper and store result into speaker
-    def transcribe(self, speaker):
+    def transcribe(self, speaker : Speaker):
 
         #TODO Figure out the best way to save the audio fast and remove any noise
         audio_data = sr.AudioData(bytes().join(speaker.data), self.vc.decoder.SAMPLING_RATE, self.vc.decoder.SAMPLE_SIZE // self.vc.decoder.CHANNELS)

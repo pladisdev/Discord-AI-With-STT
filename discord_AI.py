@@ -17,6 +17,9 @@ TOKEN = "insert your discord bot token here"
 COMMAND_ROLES = []
 COMMANDS_USERS = []
 
+#Enter the channel IDs for which channels you want the bot to reply to users. Keep empty to allow all channels.
+REPLY_CHANNELS = []
+
 #OUTPUT_DEVICE = "your_audio_output_device" # for StreamSink only
 
 loop = asyncio.get_event_loop()
@@ -29,7 +32,7 @@ speech = tts_windows.TTS()
 voice_channel = None
 
 #In a seperate async thread, recieves messages from STT
-async def whisper_message(queue):
+async def whisper_message(queue : asyncio.Queue):
  while True:
     response = await queue.get()
 
@@ -94,7 +97,7 @@ async def on_ready():
     print(f"We have logged in as {client.user}")
 
 @client.event
-async def on_message(message):  
+async def on_message(message : discord.Message):  
     #Ignore your own message
     if message.author == client.user:
             return
@@ -119,6 +122,9 @@ async def on_message(message):
         
         #If user @s or replies to your bot
         if (client.user in message.mentions or client.user in message.role_mentions):
+          
+            if REPLY_CHANNELS != [] and not any(message.channel.id == channel for channel in REPLY_CHANNELS):
+                return
 
             text = message.content.replace(client.user.mention, '').strip()
             
