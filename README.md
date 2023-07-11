@@ -10,7 +10,7 @@
 ## Instructions
 ### Installation - Tested on Windows
 - You will need FFMPEG installed for the bot to speak in discord. ```https://ffmpeg.org/```
-- Seems like you need python >= 3.8. try removing the version requirements in the pip install for older python versions.
+- Seems like you need python >= 3.8 and <= 3.10. try removing the version requirements in the pip install for older python versions.
 - You'll need to install torch for your PC. I tested with cuda 11.8. ```https://pytorch.org/get-started/locally/```
 - ```pip install -r requirements.txt``` for the required libraries after installing torch. (Note: you need to install discord.py[voice], not just discord.py if you are already using a discord bot)
 - Create a discord bot using the Discord Developer Portal and add the bot the server you want the bot in. Permissions (I believe) needed are Read Messages, Speak, Connect. ```https://discord.com/developers```
