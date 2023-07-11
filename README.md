@@ -16,6 +16,12 @@
 - Create a discord bot using the Discord Developer Portal and add the bot the server you want the bot in. Permissions (I believe) needed are Read Messages, Speak, Connect. ```https://discord.com/developers```
 - Edit the discord_AI script with your discord bot TOKEN and edit which roles and persons you want to be able to command the bot.
 
+### Bot command permissions
+ - In the code you can specify which roles and users can use the bot commands
+ - COMMAND_ROLES requires a lower case name of the role in your guild
+ - COMMAND_USERS requires your User ID. Right click a user's name to get their ID in discord.
+ - Leaving both empty allows anyone to command the bot.
+
 ### Commands
 - ```!join``` to have the bot join a VC you are currently in
 - ```!leave``` to have the bot leave your VC
