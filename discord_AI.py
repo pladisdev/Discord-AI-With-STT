@@ -10,7 +10,7 @@ from sinks.whisper_sink import WhisperSink #User whisper to transcribe audio and
 #You should replace these with your llm and tts of choice
 from modules import llm_dialo, tts_windows
 
-TOKEN = "insert your discord bot token here"
+TOKEN = "MTA4OTIzMTI3MTk2NTc2NTc2Mw.GLo6ir.CLI3OGng3y2LCDintccPe2cYlV8dZKFFE2I-yo"#"insert your discord bot token here"
 
 #This is who you allow to use commands with the bot, either by role, user or both.
 #can be a list, both being empty means anyone can command the bot. Roles should be lowercase, USERS requires user IDs
@@ -40,13 +40,13 @@ async def whisper_message(queue : asyncio.Queue):
         break
     else:
         user_id = response["user"]
-        message = response["result"]
+        text = response["result"]
                 
         username = await get_username(user_id)  
 
-        print(f"Detected Message: {message}")
+        print(f"Detected Message: {text}")
 
-        answer = await loop.run_in_executor(None, ai.chat, username, message)
+        answer = await loop.run_in_executor(None, ai.chat, username, text)
         await play_audio(answer)
 
 @client.command()
@@ -129,13 +129,13 @@ async def on_message(message : discord.Message):
             text = message.content.replace(client.user.mention, '').strip()
             
             if message.author.nick is not None:
-                user = message.author.nick.replace(".", " ")
+                username = message.author.nick.replace(".", " ")
             elif message.author.display_name is not None:
-                user = message.author.display_name.replace(".", " ")
+                username = message.author.display_name.replace(".", " ")
             else:
-                user = message.author.name.replace(".", " ")
+                username = message.author.name.replace(".", " ")
 
-            response = await loop.run_in_executor(None, ai.chat, user, text)
+            response = await loop.run_in_executor(None, ai.chat, username, text)
 
             await message.reply(response, mention_author=False)
 
