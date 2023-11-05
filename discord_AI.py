@@ -8,7 +8,9 @@ from discord import FFmpegOpusAudio
 from sinks.whisper_sink import WhisperSink #User whisper to transcribe audio and outputs to TTS
 
 #You should replace these with your llm and tts of choice
-from modules import llm_dialo, tts_windows
+#llm_dialo for fast but awful conversation
+#llm_guan_3b for slow but better conversation
+from modules import llm_guan_3b as llm, tts_windows as tts
 
 TOKEN = "insert your discord bot token here"
 
@@ -26,8 +28,8 @@ loop = asyncio.get_event_loop()
 intents = discord.Intents.all()
 client = commands.Bot(command_prefix="!", intents=intents, loop=loop)
 
-ai = llm_dialo.LLM()
-speech = tts_windows.TTS()
+ai = llm.LLM()
+speech = tts.TTS()
   
 voice_channel = None
 
@@ -68,6 +70,7 @@ async def join(ctx):
         queue = asyncio.Queue()
         loop.create_task(whisper_message(queue))
         whisper_sink = WhisperSink(queue, 
+                                   loop,
                                    data_length=50000, 
                                    quiet_phrase_timeout=1.25, 
                                    mid_sentence_multiplier=1.75, 
