@@ -45,3 +45,7 @@
 ## Issues
 - Whisper will return a bunch of hallucinations that come from youtube commentary that can be filtered. For example: "THANK YOU", "Make sure to like, comment, and subcribe", "you", etc.
 - Possibility for a speaker to be cut off early when a large group is talking due to whisper processing taking too long
+
+## Example
+Modified code used for the AI vtuber Aiko.
+https://youtu.be/8Giv5mupJNE?si=McmVyD9Qf12-8YY4
