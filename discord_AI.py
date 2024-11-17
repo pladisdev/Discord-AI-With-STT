@@ -4,15 +4,25 @@ import discord
 from discord.ext import commands
 from discord import FFmpegOpusAudio
 
-#from sinks.stream_sink import StreamSink #Outputs audio to desired output audio device (tested on windows)
-from sinks.whisper_sink import WhisperSink #User whisper to transcribe audio and outputs to TTS
-
 #You should replace these with your llm and tts of choice
 #llm_dialo for fast but awful conversation
 #llm_guan_3b for slow but better conversation
 from modules import llm_guan_3b as llm, tts_windows as tts
 
-TOKEN = "insert your discord bot token here"
+from os import environ
+from sys import exit
+TOKEN = environ.get("DISCORD_TOKEN", None) 
+if TOKEN is None:
+    print("Need to set DISCORD_TOKEN in environmental variables. Exiting program.")
+    exit()
+
+DEEPGRAM_API_KEY = environ.get("DEEPGRAM_API_KEY", None)
+
+from sinks.deepgram_sink import DeepgramSink as Sink #Connects to deepgram, requires API key
+sink_settings = Sink.SinkSettings(DEEPGRAM_API_KEY, 300, 1000, 25000, 2)
+
+#from sinks.whisper_sink import WhisperSink as Sink #User whisper to transcribe audio and outputs to TTS
+#sink_settings = Sink.SinkSettings(50000, 1.2, 1.8, 0.75, 30, 3, -1)
 
 #This is who you allow to use commands with the bot, either by role, user or both.
 #can be a list, both being empty means anyone can command the bot. Roles should be lowercase, USERS requires user IDs
@@ -21,8 +31,6 @@ COMMANDS_USERS = []
 
 #Enter the channel IDs for which channels you want the bot to reply to users. Keep empty to allow all channels.
 REPLY_CHANNELS = []
-
-#OUTPUT_DEVICE = "your_audio_output_device" # for StreamSink only
 
 loop = asyncio.get_event_loop()
 intents = discord.Intents.all()
@@ -33,8 +41,22 @@ speech = tts.TTS()
   
 voice_channel = None
 
+class DiscordUser:
+    def __init__(self):
+        self.user_id = None
+        self.username = None
+
+    async def add_user(self, user_id):
+        self.user_id = user_id
+        self.username = await get_username(user_id)  
+        return self.username
+        
 #In a seperate async thread, recieves messages from STT
 async def whisper_message(queue : asyncio.Queue):
+ 
+ #store user names based on their id
+ discord_users = []
+
  while True:
     response = await queue.get()
 
@@ -43,13 +65,26 @@ async def whisper_message(queue : asyncio.Queue):
     else:
         user_id = response["user"]
         text = response["result"]
-                
-        username = await get_username(user_id)  
+
+        #Check if user name already exists to reduce time calling get_username
+        user_exists= False
+        username = None
+        for discord_user in discord_users:
+            if discord_user.user_id == user_id:
+                username = discord_user.username
+                user_exists = True
+                break    
+        if not user_exists:
+            discord_users.append(DiscordUser())
+            username = await discord_users[-1].add_user(user_id)
 
         print(f"Detected Message: {text}")
-
-        answer = await loop.run_in_executor(None, ai.chat, username, text)
-        await play_audio(answer)
+        
+        if username is not None:
+            answer = await loop.run_in_executor(None, ai.chat, username, text)
+            await play_audio(answer)
+        else:
+            print(f"Error: Username is null")
 
 @client.command()
 async def quit(ctx):
@@ -69,15 +104,7 @@ async def join(ctx):
         #Replace Sink for either StreamSink or WhisperSink
         queue = asyncio.Queue()
         loop.create_task(whisper_message(queue))
-        whisper_sink = WhisperSink(queue, 
-                                   loop,
-                                   data_length=50000, 
-                                   quiet_phrase_timeout=1.25, 
-                                   mid_sentence_multiplier=1.75, 
-                                   no_data_multiplier=0.75, 
-                                   max_phrase_timeout=20, 
-                                   min_phrase_length=3, 
-                                   max_speakers=4)
+        whisper_sink = Sink(sink_settings=sink_settings, queue=queue, loop=loop)
         
         voice_channel.start_recording(whisper_sink, callback, ctx)
         await ctx.send("Joining.")
@@ -86,7 +113,7 @@ async def join(ctx):
 
 #When client stops recording, this is called
 #Replace Sink for either StreamSink or WhisperSink
-async def callback(sink: WhisperSink, ctx):
+async def callback(sink: Sink, ctx):
     sink.close()
 
 # leave vc

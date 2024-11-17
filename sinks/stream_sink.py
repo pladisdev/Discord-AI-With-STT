@@ -1,7 +1,7 @@
 from discord.sinks.core import Filters, Sink, default_filters
 import pyaudio 
 
-#TODO Improve like the whisper_sink
+#TODO Improve like the whisper_sink, currently OBSOLETE
 
 class StreamSink(Sink):
     def __init__(self, device_name, *, filters=None):

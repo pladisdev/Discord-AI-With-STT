@@ -60,9 +60,8 @@ class Speaker:
 
         self.data = [data]
 
-        current_time = time.time()
-        self.last_word = current_time
-        self.last_phrase = current_time
+        self.start_time = time.time()
+        self.last_word = self.start_time
 
         self.word_timeout = 0
 
@@ -89,35 +88,34 @@ class WhisperSink(Sink):
     max_speakers - The amount of users to transcribe when all speakers are talking at once.\n
     """
 
-    def __init__(
-        self,
-        queue: asyncio.Queue,
-        loop: asyncio.BaseEventLoop,
-        *,
-        filters=None,
-        data_length=50000,
-        quiet_phrase_timeout=1.2,
-        mid_sentence_multiplier=1.8,
-        no_data_multiplier=0.75,
-        max_phrase_timeout=30,
-        min_phrase_length=3,
-        max_speakers=-1
-    ):
-        self.queue = queue
-        self.loop = loop
+    class SinkSettings:
+        def __init__(self,                   
+                    data_length=50000,
+                    quiet_phrase_timeout=1.2,
+                    mid_sentence_multiplier=1.8,
+                    no_data_multiplier=0.75,
+                    max_phrase_timeout=30,
+                    min_phrase_length=3,
+                    max_speakers=-1
+                    ):          
 
+            self.data_length = data_length
+            self.quiet_phrase_timeout = quiet_phrase_timeout
+            self.mid_sentence_multiplier = mid_sentence_multiplier
+            self.no_data_multiplier = no_data_multiplier
+            self.max_phrase_timeout = max_phrase_timeout
+            self.min_phrase_length = min_phrase_length
+            self.max_speakers = max_speakers
+
+    def __init__(self, *, filters=None, sink_settings : SinkSettings, queue : asyncio.Queue, loop : asyncio.AbstractEventLoop):
         if filters is None:
             filters = default_filters
         self.filters = filters
         Filters.__init__(self, **self.filters)
-
-        self.data_length = data_length
-        self.quiet_phrase_timeout = quiet_phrase_timeout
-        self.mid_sentence_multiplier = mid_sentence_multiplier
-        self.no_data_multiplier = no_data_multiplier
-        self.max_phrase_timeout = max_phrase_timeout
-        self.min_phrase_length = min_phrase_length
-        self.max_speakers = max_speakers
+        
+        self.sink_settings = sink_settings
+        self.queue = queue
+        self.loop = loop
 
         self.vc = None
         self.audio_data = {}
@@ -138,6 +136,7 @@ class WhisperSink(Sink):
 
     def transcribe_audio(self, temp_file):
         # The whisper model
+        start_time = time.time()
         segments, info = audio_model.transcribe(
             temp_file,
             beam_size=10,
@@ -151,6 +150,7 @@ class WhisperSink(Sink):
         result = ""
         for segment in segments:
             result += segment.text
+        print(f"Transcribe: {time.time() - start_time}")
         print(result)
         return result
 
@@ -181,14 +181,14 @@ class WhisperSink(Sink):
         if self.is_valid_phrase(speaker.phrase, transcription):
             speaker.empty_bytes_counter = 0
 
-            speaker.word_timeout = self.quiet_phrase_timeout
+            speaker.word_timeout = self.sink_settings.quiet_phrase_timeout
 
             # Detect if user is mid sentence and delay sending full message
             if re.search(r"\s*\.{2,}$", transcription) or not re.search(
                 r"[.!?]$", transcription
             ):
                 speaker.word_timeout = (
-                    speaker.word_timeout * self.mid_sentence_multiplier
+                    speaker.word_timeout * self.sink_settings.mid_sentence_multiplier
                 )
 
             speaker.phrase = transcription
@@ -217,8 +217,8 @@ class WhisperSink(Sink):
 
                     if not user_heard:
                         if (
-                            self.max_speakers < 0
-                            or len(self.speakers) <= self.max_speakers
+                            self.sink_settings.max_speakers < 0
+                            or len(self.speakers) <= self.sink_settings.max_speakers
                         ):
                             self.speakers.append(Speaker(item[0], item[1]))
 
@@ -231,21 +231,20 @@ class WhisperSink(Sink):
                     word_timeout = speaker.word_timeout
                 else:
                     # No data coming in from discord, reduces word_timeout for faster inference
-                    word_timeout = speaker.word_timeout * self.no_data_multiplier
+                    word_timeout = speaker.word_timeout * self.sink_settings.no_data_multiplier
 
                 current_time = time.time()
 
-                if len(speaker.phrase) >= self.min_phrase_length:
+                if len(speaker.phrase) >= self.sink_settings.min_phrase_length:
                     # If the user stops saying anything new or has been speaking too long.
-                    print(f"{time.time()} {word_timeout}")
-                    if (
-                        current_time - speaker.last_word > word_timeout
-                        or current_time - speaker.last_phrase > self.max_phrase_timeout
-                    ):
+                    part1 = current_time - speaker.last_word > word_timeout
+                    part2 = current_time - speaker.start_time > self.sink_settings.max_phrase_timeout
+                    if (part1 or part2):
+                        print(f"Stop talking: {part1}. Too long: {part2}")
                         self.loop.call_soon_threadsafe(self.queue.put_nowait, {"user": speaker.user, "result": speaker.phrase})
 
                         self.speakers.remove(speaker)
-                elif current_time > self.quiet_phrase_timeout * 2:
+                elif current_time > self.sink_settings.quiet_phrase_timeout * 2:
                     # Reset Remove the speaker if no valid phrase detected after set period of time
                     self.speakers.remove(speaker)
 
@@ -259,8 +258,8 @@ class WhisperSink(Sink):
         # Its only the first the first data that grows massive and its only silent audio, so its trimmed.
 
         data_len = len(data)
-        if data_len > self.data_length:
-            data = data[-self.data_length :]
+        if data_len > self.sink_settings.data_length:
+            data = data[-self.sink_settings.data_length :]
 
         # Send bytes to be transcribed
         self.voice_queue.put([user, data])
