@@ -1,5 +1,7 @@
 # Discord AI With STT
 
+## Notice
+This is designed to be repurposed for individual projects. This is not a plug-and-play discord bot. The main purpose is to demonstrate how discord sinks can be used with STT, LLMs, and TTS. 
 ## Updates
 - Added deepgram sink, which allows audio streaming for STT. Improves latency massively espicially for long sequences of dialogue. Can be repurposed for local STT streaming and other services.
 - Reduced latency for getting discord name from user id by doing the search only once.
