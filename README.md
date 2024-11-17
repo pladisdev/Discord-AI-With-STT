@@ -1,7 +1,7 @@
 # Discord AI With STT
 
 ## Updates
-- Added deepgram sink, which allows audio streaming for TTS. Improves latency massively espicially for long sequences of dialogue. Can be repurposed for local TTS streaming and other services.
+- Added deepgram sink, which allows audio streaming for STT. Improves latency massively espicially for long sequences of dialogue. Can be repurposed for local STT streaming and other services.
 - Reduced latency for getting discord name from user id by doing the search only once.
 - Improved settings for each sink with some standardization.
 - stream_sink obselete till further work is done.
