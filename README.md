@@ -22,7 +22,7 @@ This is designed to be repurposed for individual projects. This is not a plug-an
 - You'll need to install torch for your PC. I tested with cuda 11.8. ```https://pytorch.org/get-started/locally/```
 - ```pip install -r requirements.txt``` for the required libraries after installing torch. (Note: I previously assumed you needed discord.py instead of py-cord. But it may be you need both)
 - Create a discord bot using the Discord Developer Portal and add the bot the server you want the bot in. Permissions (I believe) needed are Read Messages, Speak, Connect. ```https://discord.com/developers```
-- Add the token to your environmental variables. Example for windows: ```setx DISCORD TOKEN <your-token-here>``` on powershell with admin
+- Add the token to your environmental variables. Example for windows: ```setx DISCORD_TOKEN <your-token-here>``` on powershell with admin
 - Edit the discord_AI script with which roles and persons you want to be able to command the bot.
 
 ### Deepgram Sink
