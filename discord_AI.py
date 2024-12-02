@@ -196,6 +196,6 @@ async def stop(ctx):
     ctx.guild.voice_client.stop()
 
 async def get_username(user_id):
-    return await client.fetch_user(user_id)
+    return await client.fetch_user(user_id).name
 
 client.run(TOKEN)
