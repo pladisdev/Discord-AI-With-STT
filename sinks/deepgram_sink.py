@@ -2,10 +2,10 @@
 import asyncio
 from asyncio import Queue
 from enum import Enum
+import time
 
 #3rd party libraries
 from discord.sinks.core import Filters, Sink, default_filters
-import time
 from deepgram import (
     DeepgramClient,
     DeepgramClientOptions,
@@ -157,6 +157,7 @@ class Speaker():
                     
                 elif self.state == self.SpeakerState.FINALIZE:
                     await dg_connection.finalize()
+                    self.reset_data()
                     self.state = self.SpeakerState.RUNNING
                 else:
                     await asyncio.sleep(.005)

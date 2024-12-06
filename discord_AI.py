@@ -16,13 +16,15 @@ if TOKEN is None:
     print("Need to set DISCORD_TOKEN in environmental variables. Exiting program.")
     exit()
 
-DEEPGRAM_API_KEY = environ.get("DEEPGRAM_API_KEY", None)
-
-from sinks.deepgram_sink import DeepgramSink as Sink #Connects to deepgram, requires API key
-sink_settings = Sink.SinkSettings(DEEPGRAM_API_KEY, 300, 1000, 25000, 2)
+#DEEPGRAM_API_KEY = environ.get("DEEPGRAM_API_KEY", None)
+#from sinks.deepgram_sink import DeepgramSink as Sink #Connects to deepgram, requires API key
+#sink_settings = Sink.SinkSettings(DEEPGRAM_API_KEY, 300, 1000, 25000, 2)
 
 #from sinks.whisper_sink import WhisperSink as Sink #User whisper to transcribe audio and outputs to TTS
 #sink_settings = Sink.SinkSettings(50000, 1.2, 1.8, 0.75, 30, 3, -1)
+
+from sinks.stream_sink import StreamSink  as Sink
+sink_settings = Sink.SinkSettings(500, 25000, 2)
 
 #This is who you allow to use commands with the bot, either by role, user or both.
 #can be a list, both being empty means anyone can command the bot. Roles should be lowercase, USERS requires user IDs

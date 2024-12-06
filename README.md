@@ -3,10 +3,11 @@
 ## Notice
 This is designed to be repurposed for individual projects. This is not a plug-and-play discord bot. The main purpose is to demonstrate how discord sinks can be used with STT, LLMs, and TTS. 
 ## Updates
+- Added stream sink using Whisper Stream! The main advantage over regular Whisper is it will not slow down when users speak for longer periods. Works when using discord Audio Input Sensitivity. Additional logic needed for continous audio stream. Have not tested multiple speakers. 
+
 - Added deepgram sink, which allows audio streaming for STT. Improves latency massively espicially for long sequences of dialogue. Can be repurposed for local STT streaming and other services.
 - Reduced latency for getting discord name from user id by doing the search only once.
 - Improved settings for each sink with some standardization.
-- stream_sink obselete till further work is done.
 
 ## Example discord bot written in python for STT, TTS, and responding to messages.
 ### Features
@@ -60,6 +61,7 @@ This is designed to be repurposed for individual projects. This is not a plug-an
 ## Issues
 - Whisper will return a bunch of hallucinations that come from youtube commentary that can be filtered. For example: "THANK YOU", "Make sure to like, comment, and subcribe", "you", etc.
 - Possibility for a speaker to be cut off early when a large group is talking due to whisper processing taking too long
+- Stream sink does not work for a constant audio stream. Also does not work for small single word replies.
 
 ## Example
 Modified code used for the AI vtuber Aiko.
