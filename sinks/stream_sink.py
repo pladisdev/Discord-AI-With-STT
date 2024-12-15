@@ -31,8 +31,7 @@ class Speaker():
         self.online = OnlineASRProcessor(asr)
         self.online.init()
 
-        self.in_processing = False
-        self.is_first = True
+        self.processing = False
 
         self.running = True
                
@@ -80,15 +79,11 @@ class Speaker():
         
         if sum(len(x) for x in out) < minlimit:
             return None
-        
-        self.data = []
-        
+
         if not out:
             return None
-        conc = np.concatenate(out)
-        if self.is_first and len(conc) < minlimit:
-            return None
-        self.is_first = False
+        
+        self.data = []
         return np.concatenate(out)
 
     async def stream(self):
@@ -96,7 +91,6 @@ class Speaker():
             a = await self.recieve_audio_chunk()
             if a is not None:
                 await self.transcript_check(a)
-                self.in_processing = True
 
             await asyncio.sleep(.001)
 
@@ -105,10 +99,12 @@ class Speaker():
 
     async def transcript_check(self, a):     
             self.online.insert_audio_chunk(a)
-            self.data = []
             try:
                 loop = asyncio.get_event_loop()
+                self.processing = True
                 transcript = await loop.run_in_executor(None, self.online.process_iter,)
+                self.processing = False
+                self.phrases.append(transcript[2])         
             except AssertionError as e:
                 logger.error(f"assertion error: {e}")
                 pass
@@ -117,11 +113,11 @@ class Speaker():
                     #TODO Logic for using VAD for processing
                     self.phrases.append(transcript[2]) 
 
-    async def send_transcript(self, transcript):
+    async def send_transcript(self, transcript : str):
         self.online.init()
-        self.in_processing = False
         self.phrases = []
-        await self.queue.put({"user" : self.user, "result" : transcript})
+        if transcript.strip() != "":
+            await self.queue.put({"user" : self.user, "result" : transcript})
         
     async def finish_transcript(self):
         self.add_silence()
@@ -132,16 +128,16 @@ class Speaker():
             await self.transcript_check(a)
         
         transcript = self.online.finish() 
-        
-        if transcript[0] is not None:
-            self.phrases.append(transcript[2])
+
+        self.phrases.append(transcript[2])
         await self.send_transcript("".join(self.phrases))
 
 class StreamSink(Sink):
 
     class SinkSettings:
-        def __init__(self, min_chunk = 1000, data_length=25000, max_speakers=-1):   
+        def __init__(self, min_chunk = 1000, min_silence = 1000, data_length=25000, max_speakers=-1):   
             self.min_chunk = min_chunk
+            self.min_silence = min_silence
             self.data_length = data_length
             self.max_speakers = max_speakers
 
@@ -197,7 +193,10 @@ class StreamSink(Sink):
 
             for speaker in self.speakers:
                 #finalize data if X seconds passes from last data packet from discord
-                if current_time > speaker.last_byte + speaker.min_chunk and speaker.in_processing:
+                if (current_time > speaker.last_byte + self.sink_settings.min_silence 
+                    and len(speaker.phrases)>0 
+                    and not speaker.processing):
+                    
                     await speaker.finish_transcript()
 
         for speaker in self.speakers:
