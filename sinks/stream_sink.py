@@ -58,7 +58,7 @@ class Speaker():
 
     #TODO remake this godsforsaken conversion, has some noise from conversion
     def convert_audio(self, audio_bytes):
-        #a = np.frombuffer(b"".join(self.data), np.int16).flatten().astype(np.float32)/32768.0
+        #a = np.frombuffer(audio_bytes, np.int16).flatten().astype(np.float32)/32768.0
         s_f = sf.SoundFile(io.BytesIO(audio_bytes), channels=2,endian="LITTLE",samplerate=DISCORD_SAMPLING, subtype="PCM_16",format="RAW")
         a, _ = librosa.load(s_f,sr=WHISPER_SAMPLING, mono=True,dtype=np.float32)  
         return a
